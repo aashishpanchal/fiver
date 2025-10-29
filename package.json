@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build": "pnpm remove-dist && node build.ts",
-    "lint": "eslint \"./{src,test}/**/*.{ts,js}\" --fix",
+    "lint": "eslint \"./{src,tests}/**/*.{ts,js}\" --fix",
     "test": "vitest run",
     "test:types": "vitest --typecheck --run --passWithNoTests",
     "format": "prettier --write \"./{src,tests}/**/*.{ts,js}\"",
@@ -19,7 +19,8 @@
     "pre-commit": "pnpm format && pnpm test",
     "check-types": "tsc --noEmit",
     "coverage": "vitest --run --coverage",
-    "remove-dist": "rm -rf dist"
+    "remove-dist": "rm -rf dist",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
