@@ -33,9 +33,6 @@
       "require": "./dist/types.cjs"
     }
   },
-  "dependencies": {
-    "busboy": "^1.6.0"
-  },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
     "@types/busboy": "^1.5.4",

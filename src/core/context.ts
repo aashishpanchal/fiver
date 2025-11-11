@@ -171,14 +171,14 @@ export class UwsContext {
   #end(body?: string | Buffer<ArrayBuffer>, type?: string): void {
     const internal = this[cInternal];
     if (internal.ended || this.aborted) return;
-    
+
     // Set content-type if provided and not already set
     if (type && !internal.headers.has('content-type')) {
       internal.headers.set('content-type', type);
     }
-    
+
     const statusCode = internal.status || 200;
-    
+
     // Cork batches all writes into single TCP send for better performance
     this.res.cork(() => {
       this.res.writeStatus(`${statusCode}`);
@@ -193,7 +193,7 @@ export class UwsContext {
         }
       });
       internal.headerSent = true;
-      
+
       if (body !== undefined) {
         if (Buffer.isBuffer(body)) {
           // uWS requires ArrayBuffer, not Node Buffer
@@ -209,7 +209,7 @@ export class UwsContext {
         this.res.end();
       }
     });
-    
+
     internal.ended = true;
   }
 

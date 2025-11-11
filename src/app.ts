@@ -3,7 +3,13 @@ import type {Target} from './types';
 import {compose} from './router/layer';
 import {cInternal, UwsContext} from './core';
 import {onError, onNotFound, Router} from './router';
-import type {AppOptions, HttpRequest, HttpResponse, TemplatedApp, WebSocketBehavior} from '../uws';
+import type {
+  AppOptions,
+  HttpRequest,
+  HttpResponse,
+  TemplatedApp,
+  WebSocketBehavior,
+} from '../uws';
 
 export type FiverOptions = {
   target?: Target;
@@ -50,11 +56,11 @@ export class Fiver extends Router {
 
   /**
    * Add WebSocket support
-   * 
+   *
    * @param pattern - URL pattern for WebSocket endpoint
    * @param behavior - WebSocket behavior configuration
    * @returns this for chaining
-   * 
+   *
    * @example
    * ```ts
    * app.ws('/chat', {

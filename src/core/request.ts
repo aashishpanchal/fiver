@@ -10,6 +10,7 @@ import type {
   RouterRoute,
   CustomHeader,
   RequestHeader,
+  BufferArray,
 } from '../types';
 import {FormData, type FormOption, formParse} from '../utils/body';
 
@@ -27,7 +28,6 @@ type InternalData = {
   urlQuery: string | undefined;
   param?: Map<string, string>;
 };
-type BufferArray = Buffer<ArrayBuffer>;
 type Options = {
   ctx: UwsContext;
   req: HttpRequest;
@@ -38,15 +38,6 @@ type Options = {
 
 /**
  * High-level request wrapper for uWebSockets.js.
- *
- * Handles parsing of:
- *  - Headers
- *  - Prams regex
- *  - Query string
- *  - Body (Buffer, text, JSON, Blob, FormData)
- *
- * Provides safe body reading with abort detection and
- * per-request caching to avoid duplicate reads.
  */
 export class UwsRequest {
   /** The underlying uWebSockets request object */
@@ -171,9 +162,8 @@ export class UwsRequest {
    * req.query; // => { active: "true", page: "2" }
    * ```
    */
-  get query(): Record<string, string> {
-    const [_, qs] = this.url.split('?', 2);
-    return Object.fromEntries(new URLSearchParams(qs));
+  query(field?: string): Record<string, string> {
+    throw new Error('Query not implement!');
   }
 
   /**
@@ -375,8 +365,8 @@ export class UwsRequest {
       }
     } else if (cType.startsWith('multipart/form-data')) {
       // Get buffer from stream (cached in UwsReadable)
-      const buffer = await this.body();
-      const form = formParse(buffer!, cType, options);
+      const buf = await this.body();
+      const form = formParse(buf, cType, options);
       this[rInternal].body.formData = form;
       return form;
     }

@@ -1,7 +1,5 @@
-import busboy from 'busboy';
-import type {Readable} from 'node:stream';
+import uws from '../..//uws';
 import {formatBytes} from '../utils/tools';
-import {HIGH_WATER_MARK} from '../consts';
 
 export type FileType = {
   bytes: number;
@@ -94,86 +92,57 @@ export const isFileType = (v: any): v is FileType =>
  * Parse multipart/form-data bodies from a readable stream.
  */
 export const formParse = (
-  stream: Readable,
+  buf: Buffer,
   cType: string,
-  opt: FormOption = {},
-): Promise<FormData> => {
-  const {files = 5, fileSize = 5 * 1024 * 1024, fileFields} = opt;
-
-  const bb = busboy({
-    headers: {'content-type': cType},
-    highWaterMark: HIGH_WATER_MARK,
-  });
-
-  let fileCount = 0;
+  options: FormOption = {},
+): FormData => {
+  const {files = 5, fileSize = 5 * 1024 * 1024, fileFields} = options;
   const form = new FormData();
-  let done = false;
-
-  return new Promise((resolve, reject) => {
-    bb.on('field', (name, val) => form.append(name, val));
-    bb.on('file', (name, file, info) => {
-      const {filename, mimeType} = info;
+  // Parse data
+  const parts = uws.getParts(buf, cType);
+  if (parts) {
+    let fileCount = 0;
+    parts.forEach(part => {
+      const {name, data, filename, type: mimeType} = part;
+      // Convert ArrayBuffer → Buffer safely
+      const buffer = Buffer.from(data);
+      // === Normal text field ===
+      if (!filename || !mimeType) {
+        const value = buffer.toString('utf8');
+        form.append(name, value);
+        return;
+      }
+      // === File field ===
+      fileCount++;
+      if (fileCount > files)
+        throw new Error(
+          `Too many files uploaded. Maximum allowed: ${files}, received: ${fileCount}`,
+        );
       if (
         fileFields &&
         !(
           (Array.isArray(fileFields) && fileFields.includes(name)) ||
           fileFields === name
         )
-      ) {
-        file.resume();
-        return bb.destroy(
-          new Error(`File upload not allowed for field '${name}'`),
+      )
+        throw new Error(`File upload not allowed for field '${name}'`);
+      if (buffer.byteLength > fileSize)
+        throw new RangeError(
+          `File '${filename}' is ${formatBytes(buffer.byteLength)}, max allowed ${formatBytes(fileSize)}`,
         );
-      }
-      fileCount++;
-      if (fileCount > files) {
-        file.resume();
-        return bb.destroy(
-          new Error(`File limit exceeded: ${fileCount}/${files} files`),
-        );
-      }
-      let size = 0;
-      const chunks: Buffer[] = [];
-      file.on('data', chunk => {
-        size += chunk.length;
-        if (size > fileSize) {
-          file.resume();
-          return bb.destroy(
-            new RangeError(
-              `File '${filename}' is ${formatBytes(size)}, max allowed ${formatBytes(fileSize)}`,
-            ),
-          );
-        }
-        chunks.push(chunk);
-      });
-      file.on('end', () => {
-        if (!chunks.length) return;
-        const buffer = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
-        const ext = filename.includes('.')
-          ? filename.split('.').pop()!.toLowerCase().slice(0, 10)
-          : '';
-        const fileInfo: FileType = {
-          filename,
-          mimeType: mimeType.slice(0, 100),
-          extension: ext,
-          readable: formatBytes(buffer.length),
-          bytes: buffer.length,
-          buffer,
-        };
-        form.append(name, fileInfo);
-      });
+      const ext = filename.includes('.')
+        ? filename.split('.').pop()!.toLowerCase().slice(0, 10)
+        : '';
+      const fileInfo: FileType = {
+        filename,
+        mimeType: mimeType.slice(0, 100),
+        extension: ext,
+        readable: formatBytes(buffer.length),
+        bytes: buffer.length,
+        buffer,
+      };
+      form.append(name, fileInfo);
     });
-    bb.once('error', err => {
-      if (done) return;
-      done = true;
-      if (!stream.destroyed) stream.destroy();
-      reject(err);
-    });
-    bb.once('finish', () => {
-      if (done) return;
-      done = true;
-      resolve(form);
-    });
-    stream.pipe(bb);
-  });
+  }
+  return form;
 };
