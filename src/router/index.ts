@@ -1,18 +1,26 @@
-import {HttpError} from '../errors';
 import {SmartRouter} from './smart';
 import {mergePath} from '../utils/url';
 import {TrieRouter} from './trie-tree';
 import {RegExpRouter} from './reg-exp';
 import {METHOD_NAME_ALL, METHOD_NAME_ALL_LOWERCASE, METHODS} from '../consts';
-import type {Handler, RouterRoute, Router as IRouter, Target, $404Handler, ErrorHandler} from '../types';
+import type {
+  Target,
+  Handler,
+  RouterRoute,
+  $404Handler,
+  ErrorHandler,
+  Router as IRouter,
+} from '../types';
+import {compose} from './layer';
 
-const notFoundHandler: $404Handler = c => {
-  return c.status(404).text('404 Not Found');
-};
+export const onNotFound: $404Handler = ctx =>
+  ctx.status(404).json({
+    message: `Cannot ${ctx.req.url} on ${ctx.req.method}`,
+  });
 
-const errorHandler: ErrorHandler = (err, c) => {
-  if (HttpError.isHttpError(err)) return c.status(err.status).json(err.getBody());
-  return c.status(501).text('Internal Server Error');
+export const onError: ErrorHandler = (err, ctx) => {
+  console.error(err);
+  ctx.text('Internal Server Error', 500);
 };
 
 /**
@@ -25,6 +33,10 @@ export class Router {
   #basePath = '/';
   #path = '/';
   router: IRouter<[Handler, RouterRoute]>;
+
+  #notFound: $404Handler = onNotFound;
+  // Cannot use `#` because it requires visibility at JavaScript runtime.
+  #errorHandler: ErrorHandler = onError;
 
   /** Register a GET route. */
   get!: (path: string, ...handlers: Handler[]) => this;
@@ -53,6 +65,7 @@ export class Router {
    *   IRouter   → use provided router directly
    *
    * @example
+   * ```ts
    * // Multi-router (default)
    * import express from 'express';
    * import {Router} from 'exstack';
@@ -62,8 +75,7 @@ export class Router {
    *
    * api.get('/ping', (req, res) => res.send('pong'));
    * api.post('/login', (req, res) => res.send({ token: 'abc123' }));
-   *
-   * app.use(api.dispatch);
+   * ```
    */
   constructor(router: Target = 'both') {
     // Dynamically assign route registration methods
@@ -90,13 +102,11 @@ export class Router {
         });
         break;
       default:
-        throw new Error(`Router constructor expects 'trie', 'regexp', 'both'. Received: ${router}`);
+        throw new Error(
+          `Router constructor expects 'trie', 'regexp', 'both'. Received: ${router}`,
+        );
     }
   }
-
-  #notFound: $404Handler = notFoundHandler;
-  // Cannot use `#` because it requires visibility at JavaScript runtime.
-  private errorHandler: ErrorHandler = errorHandler;
 
   /**
    * Register a route for one or more HTTP methods and paths.
@@ -111,11 +121,17 @@ export class Router {
    * router.on(['get', 'post'], ['/user', '/account'], handler);
    * ```
    */
-  on = (method: string | string[], path: string | string[], ...handlers: Handler[]): Router => {
+  on = (
+    method: string | string[],
+    path: string | string[],
+    ...handlers: Handler[]
+  ): Router => {
     for (const p of [path].flat()) {
       this.#path = p;
       for (const m of [method].flat()) {
-        handlers.forEach(handler => this.#addRoute(m.toUpperCase(), this.#path, handler));
+        handlers.forEach(handler =>
+          this.#addRoute(m.toUpperCase(), this.#path, handler),
+        );
       }
     }
     return this;
@@ -145,14 +161,14 @@ export class Router {
       this.#path = '*';
       handlers.unshift(arg1);
     }
-    handlers.forEach(handler => this.#addRoute(METHOD_NAME_ALL, this.#path, handler));
+    handlers.forEach(handler =>
+      this.#addRoute(METHOD_NAME_ALL, this.#path, handler),
+    );
     return this;
   };
 
   /**
    * `.onError()` handles an error and returns a customized Response.
-   *
-   * @see {@link https://hono.dev/docs/api/hono#error-handling}
    *
    * @param {ErrorHandler} handler - request Handler for error
    * @returns {Hono} changed Hono instance
@@ -166,14 +182,14 @@ export class Router {
    * ```
    */
   onError = (handler: ErrorHandler): Router => {
-    this.errorHandler = handler;
+    this.#errorHandler = handler;
     return this;
   };
 
   /**
    * `.notFound()` allows you to customize a Not Found Response.
    *
-   * @param {NotFoundHandler} handler - request handler for not-found
+   * @param {$404Handler} handler - request handler for not-found
    * @returns {Hono} changed Hono instance
    *
    * @example
@@ -214,7 +230,17 @@ export class Router {
     ) {
       // merge routes (Shadow Copy)
       router.routes.forEach(r => {
-        this.#addRoute(r.method, mergePath(base, r.path), r.handler);
+        let handler: Handler;
+        if (router.#errorHandler === onError) {
+          handler = r.handler;
+        } else {
+          handler = async (c, next) =>
+            await compose([], {onError: router.#errorHandler})(
+              c,
+              () => r.handler(c, next) as any,
+            );
+        }
+        this.#addRoute(r.method, mergePath(base, r.path), handler);
       });
     } else {
       // Fallback → Throw Error
@@ -228,20 +254,16 @@ export class Router {
   /**
    * Internal method that registers a route into the internal matcher.
    */
-  #addRoute(method: string, path: string, handler: Handler): Router {
+  #addRoute(method: string, path: string, handler: Handler): void {
     method = method.toUpperCase();
     const fullPath = mergePath(this.#basePath, path);
-
-    const route: RouterRoute = {
-      basePath: this.#basePath,
+    const r: RouterRoute = {
       path: fullPath,
       method,
       handler,
+      basePath: this.#basePath,
     };
-
-    this.router.add(method, path, [handler, route]);
-    this.routes.push(route);
-
-    return this;
+    this.router.add(method, path, [handler, r]);
+    this.routes.push(r);
   }
 }

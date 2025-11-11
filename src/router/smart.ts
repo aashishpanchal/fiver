@@ -1,5 +1,5 @@
 import type {Result, Router} from '../types';
-import {UnsupportedPathError} from './utils';
+import {UnsupportedPathError} from './error';
 import {MESSAGE_MATCHER_IS_ALREADY_BUILT} from '../consts';
 
 export class SmartRouter<T> implements Router<T> {
@@ -59,7 +59,8 @@ export class SmartRouter<T> implements Router<T> {
   }
 
   get activeRouter(): Router<T> {
-    if (this.#routes || this.#routers.length !== 1) throw new Error('No active router has been determined yet.');
+    if (this.#routes || this.#routers.length !== 1)
+      throw new Error('No active router has been determined yet.');
     return this.#routers[0];
   }
 }

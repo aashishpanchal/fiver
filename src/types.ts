@@ -1,5 +1,5 @@
-import type {Context} from './context';
 import type {HttpError} from './errors';
+import type {UwsContext} from './core';
 
 ////////////////////////////////////////
 //////                            //////
@@ -9,13 +9,18 @@ import type {HttpError} from './errors';
 
 export type Next = () => Promise<void>;
 
-export type Handler = (c: Context, next: Next) => void | Promise<void>;
+export type Handler = (ctx: UwsContext, next: Next) => void | Promise<void>;
 
-export type Middleware = (c: Context, next: Next) => Promise<void>;
+export type Middleware = (ctx: UwsContext, next: Next) => Promise<void>;
 
-export type $404Handler = (c: Context) => void | Promise<void>;
+export type $404Handler = (ctx: UwsContext) => void | Promise<void>;
 
-export type ErrorHandler = (err: Error | HttpError, c: Context) => void | Promise<void>;
+export type ErrorHandler = (
+  err: Error | HttpError,
+  ctx: UwsContext,
+) => void | Promise<void>;
+
+export type BufferArray = Buffer<ArrayBuffer>;
 
 ////////////////////////////////////////
 //////                            //////
@@ -461,3 +466,58 @@ export type AcceptHeader =
 
 // note: `X-${string}` is deprecated
 export type CustomHeader = string & {};
+
+/**
+ * Common MIME types for Content-Type header
+ */
+export type BaseMime =
+  | 'audio/aac'
+  | 'video/x-msvideo'
+  | 'image/avif'
+  | 'video/av1'
+  | 'application/octet-stream'
+  | 'image/bmp'
+  | 'text/css'
+  | 'text/csv'
+  | 'application/vnd.ms-fontobject'
+  | 'application/epub+zip'
+  | 'image/gif'
+  | 'application/gzip'
+  | 'text/html'
+  | 'image/x-icon'
+  | 'text/calendar'
+  | 'image/jpeg'
+  | 'text/javascript'
+  | 'application/json'
+  | 'application/ld+json'
+  | 'audio/x-midi'
+  | 'video/mp4'
+  | 'video/mpeg'
+  | 'audio/ogg'
+  | 'video/ogg'
+  | 'application/ogg'
+  | 'audio/opus'
+  | 'font/otf'
+  | 'application/pdf'
+  | 'image/png'
+  | 'application/rtf'
+  | 'image/svg+xml'
+  | 'image/tiff'
+  | 'video/mp2t'
+  | 'font/ttf'
+  | 'text/plain'
+  | 'application/wasm'
+  | 'video/webm'
+  | 'audio/webm'
+  | 'application/manifest+json'
+  | 'image/webp'
+  | 'font/woff'
+  | 'font/woff2'
+  | 'application/xhtml+xml'
+  | 'application/xml'
+  | 'application/zip'
+  | 'video/3gpp'
+  | 'video/3gpp2'
+  | 'model/gltf+json'
+  | 'model/gltf-binary'
+  | 'application/json';

@@ -2,12 +2,11 @@
  * Enum-style object representing all HTTP status codes.
  *
  * Includes:
- * - Informational (1xx)
  * - Success (2xx)
  * - Redirect (3xx)
+ * - Informational (1xx)
  * - Client Error (4xx)
  * - Server Error (5xx)
- * - Unofficial (-1)
  *
  * @publicApi http-status
  */
@@ -216,13 +215,48 @@ export type HttpStatusCode = Extract<ValueOf<typeof HttpStatus>, number>;
  */
 
 /** Informational & Success (1xx–2xx) */
-export type SuccessStatusCode = 100 | 101 | 102 | 103 | 200 | 201 | 202 | 203 | 204 | 205 | 206 | 207 | 208 | 226;
+export type SuccessStatusCode =
+  | 100
+  | 101
+  | 102
+  | 103
+  | 200
+  | 201
+  | 202
+  | 203
+  | 204
+  | 205
+  | 206
+  | 207
+  | 208
+  | 226;
 
 /** Redirect (3xx) */
-export type RedirectStatusCode = 300 | 301 | 302 | 303 | 304 | 305 | 306 | 307 | 308;
+export type RedirectStatusCode =
+  | 300
+  | 301
+  | 302
+  | 303
+  | 304
+  | 305
+  | 306
+  | 307
+  | 308;
 
 /** Server Error (5xx) */
-export type ServerErrorStatusCode = 500 | 501 | 502 | 503 | 504 | 505 | 506 | 507 | 508 | 509 | 510 | 511;
+export type ServerErrorStatusCode =
+  | 500
+  | 501
+  | 502
+  | 503
+  | 504
+  | 505
+  | 506
+  | 507
+  | 508
+  | 509
+  | 510
+  | 511;
 
 /**
  * Client Error (4xx)
@@ -233,9 +267,3 @@ export type ClientErrorStatusCode = Exclude<
   HttpStatusCode,
   SuccessStatusCode | RedirectStatusCode | ServerErrorStatusCode | -1
 >;
-
-/** Codes that must not include content. */
-export type ContentlessStatusCode = 101 | 204 | 205 | 304;
-
-/** Codes that may include content. */
-export type ContentfulStatusCode = Exclude<HttpStatusCode, ContentlessStatusCode>;

@@ -46,7 +46,11 @@ export class HttpError extends Error {
       cause?: unknown;
     } = {message: 'HttpError'},
   ) {
-    super(typeof options.message === 'string' ? options.message : getErrorName(status));
+    super(
+      typeof options.message === 'string'
+        ? options.message
+        : getErrorName(status),
+    );
     // Allow developer to override error name
     this.name = options.name ?? getErrorName(status);
 

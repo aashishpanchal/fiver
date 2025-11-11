@@ -15,7 +15,9 @@ const tsdownConfig: Options = {
   unused: true,
 };
 
-const entries: Options[] = [{entry: './src/index.ts'}];
+const entries: Options[] = [
+  {entry: './src/index.ts', external: [/.*\/uws$/, /^\.\.\/uws/, 'uws']},
+];
 
 async function buildProject() {
   // Clean previous dist folders

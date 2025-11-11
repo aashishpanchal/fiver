@@ -55,31 +55,6 @@ export const checkOptionalParameter = (path: string): string[] | null => {
 };
 
 /**
- * Cache for precompiled wildcard regular expressions.
- */
-let wildcardRegExpCache: Record<string, RegExp> = Object.create(null);
-
-/**
- * Converts a path with wildcards into a RegExp for quick matching.
- * Example:
- *   /api/* → /^\/api(?:|\/.*)$/
- */
-export function buildWildcardRegExp(path: string): RegExp {
-  return (wildcardRegExpCache[path] ??= new RegExp(
-    path === '*'
-      ? ''
-      : `^${path.replace(/\/\*$|([.\\+*[^\]$()])/g, (_, metaChar) => (metaChar ? `\\${metaChar}` : '(?:|/.*)'))}$`,
-  ));
-}
-
-/**
- * Clears wildcard cache (useful after routes are built).
- */
-export function clearWildcardRegExpCache() {
-  wildcardRegExpCache = Object.create(null);
-}
-
-/**
  * Merge paths.
  * @param {string[]} ...paths - The paths to merge.
  * @returns {string} The merged path.
@@ -98,6 +73,8 @@ export const mergePath: (...paths: string[]) => string = (
     sub = mergePath(sub as string, ...rest);
   }
   return `${base?.[0] === '/' ? '' : '/'}${base}${
-    sub === '/' ? '' : `${base?.at(-1) === '/' ? '' : '/'}${sub?.[0] === '/' ? sub.slice(1) : sub}`
+    sub === '/'
+      ? ''
+      : `${base?.at(-1) === '/' ? '' : '/'}${sub?.[0] === '/' ? sub.slice(1) : sub}`
   }`;
 };

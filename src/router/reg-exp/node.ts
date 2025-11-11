@@ -27,7 +27,10 @@ const compareKey = (a: string, b: string): number => {
   // wildcard
   if (a === ONLY_WILDCARD_REG_EXP_STR || a === TAIL_WILDCARD_REG_EXP_STR) {
     return 1;
-  } else if (b === ONLY_WILDCARD_REG_EXP_STR || b === TAIL_WILDCARD_REG_EXP_STR) {
+  } else if (
+    b === ONLY_WILDCARD_REG_EXP_STR ||
+    b === TAIL_WILDCARD_REG_EXP_STR
+  ) {
     return -1;
   }
 
@@ -92,7 +95,13 @@ export class Node {
 
       node = this.#children[regexpStr];
       if (!node) {
-        if (Object.keys(this.#children).some(k => k !== ONLY_WILDCARD_REG_EXP_STR && k !== TAIL_WILDCARD_REG_EXP_STR)) {
+        if (
+          Object.keys(this.#children).some(
+            k =>
+              k !== ONLY_WILDCARD_REG_EXP_STR &&
+              k !== TAIL_WILDCARD_REG_EXP_STR,
+          )
+        ) {
           throw PATH_ERROR;
         }
         if (pathErrorCheckOnly) {
@@ -111,7 +120,10 @@ export class Node {
       if (!node) {
         if (
           Object.keys(this.#children).some(
-            k => k.length > 1 && k !== ONLY_WILDCARD_REG_EXP_STR && k !== TAIL_WILDCARD_REG_EXP_STR,
+            k =>
+              k.length > 1 &&
+              k !== ONLY_WILDCARD_REG_EXP_STR &&
+              k !== TAIL_WILDCARD_REG_EXP_STR,
           )
         ) {
           throw PATH_ERROR;
@@ -132,8 +144,11 @@ export class Node {
     const strList = childKeys.map(k => {
       const c = this.#children[k];
       return (
-        (typeof c.#varIndex === 'number' ? `(${k})@${c.#varIndex}` : regExpMetaChars.has(k) ? `\\${k}` : k) +
-        c.buildRegExpStr()
+        (typeof c.#varIndex === 'number'
+          ? `(${k})@${c.#varIndex}`
+          : regExpMetaChars.has(k)
+            ? `\\${k}`
+            : k) + c.buildRegExpStr()
       );
     });
 
@@ -156,7 +171,11 @@ export class Trie {
   #context: Context = {varIndex: 0};
   #root: Node = new Node();
 
-  insert(path: string, index: number, pathErrorCheckOnly: boolean): ParamAssocArray {
+  insert(
+    path: string,
+    index: number,
+    pathErrorCheckOnly: boolean,
+  ): ParamAssocArray {
     const paramAssoc: ParamAssocArray = [];
 
     const groups: [string, string][] = []; // [mark, original string]
@@ -190,7 +209,13 @@ export class Trie {
       }
     }
 
-    this.#root.insert(tokens, index, paramAssoc, this.#context, pathErrorCheckOnly);
+    this.#root.insert(
+      tokens,
+      index,
+      paramAssoc,
+      this.#context,
+      pathErrorCheckOnly,
+    );
 
     return paramAssoc;
   }
@@ -205,18 +230,21 @@ export class Trie {
     const indexReplacementMap: ReplacementMap = [];
     const paramReplacementMap: ReplacementMap = [];
 
-    regexp = regexp.replace(/#(\d+)|@(\d+)|\.\*\$/g, (_, handlerIndex, paramIndex) => {
-      if (handlerIndex !== undefined) {
-        indexReplacementMap[++captureIndex] = Number(handlerIndex);
-        return '$()';
-      }
-      if (paramIndex !== undefined) {
-        paramReplacementMap[Number(paramIndex)] = ++captureIndex;
-        return '';
-      }
+    regexp = regexp.replace(
+      /#(\d+)|@(\d+)|\.\*\$/g,
+      (_, handlerIndex, paramIndex) => {
+        if (handlerIndex !== undefined) {
+          indexReplacementMap[++captureIndex] = Number(handlerIndex);
+          return '$()';
+        }
+        if (paramIndex !== undefined) {
+          paramReplacementMap[Number(paramIndex)] = ++captureIndex;
+          return '';
+        }
 
-      return '';
-    });
+        return '';
+      },
+    );
 
     return [new RegExp(`^${regexp}`), indexReplacementMap, paramReplacementMap];
   }

@@ -1,11 +1,10 @@
 {
   "name": "fiver",
   "version": "0.0.1",
-  "main": "dist/index.d.cjs",
-  "module": "dist/index.d.js",
-  "license": "MIT",
   "type": "module",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.d.cjs",
+  "module": "./dist/index.d.js",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
@@ -22,8 +21,24 @@
     "remove-dist": "rm -rf dist",
     "prepare": "husky"
   },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs"
+    },
+    "./types": {
+      "import": "./dist/types.js",
+      "types": "./dist/types.d.ts",
+      "require": "./dist/types.cjs"
+    }
+  },
+  "dependencies": {
+    "busboy": "^1.6.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
+    "@types/busboy": "^1.5.4",
     "@types/node": "^24.9.2",
     "arg": "^5.0.2",
     "esbuild": "^0.25.11",
@@ -42,6 +57,7 @@
     "unplugin-unused": "^0.5.4",
     "vitest": "^4.0.4"
   },
+  "license": "MIT",
   "author": "Aashish Panchal <aipanchal51@gmail.com>",
   "description": "Next-gen webserver for human",
   "keywords": [
