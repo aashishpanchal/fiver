@@ -2,10 +2,12 @@
  * Constant representing all HTTP methods in uppercase.
  */
 export const METHOD_NAME_ALL = 'ALL' as const;
+
 /**
  * Constant representing all HTTP methods in lowercase.
  */
 export const METHOD_NAME_ALL_LOWERCASE = 'all' as const;
+
 /**
  * Array of supported HTTP methods.
  */
@@ -17,6 +19,7 @@ export const METHODS = [
   'options',
   'patch',
 ] as const;
+
 /**
  * Error message indicating that a route cannot be added because the matcher is already built.
  */

@@ -1,6 +1,6 @@
 {
-  "name": "fiver",
-  "version": "0.0.1",
+  "name": "ufiber",
+  "version": "0.0.0-exp-1",
   "type": "module",
   "main": "./dist/index.d.cjs",
   "module": "./dist/index.d.js",
@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "build": "pnpm remove-dist && node build.ts",
+    "build:watch": "pnpm remove-dist && node build.ts --watch",
     "lint": "eslint \"./{src,tests}/**/*.{ts,js}\" --fix",
     "test": "vitest run",
     "test:types": "vitest --typecheck --run --passWithNoTests",
@@ -64,7 +65,6 @@
     "husky": "^9.1.7",
     "prettier": "^3.6.2",
     "rimraf": "^6.0.1",
-    "supertest": "^7.1.4",
     "tsdown": "^0.15.11",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.2",
@@ -74,14 +74,19 @@
   },
   "license": "MIT",
   "author": "Aashish Panchal <aipanchal51@gmail.com>",
-  "description": "Next-gen webserver for human",
+  "description": "Next-gen webserver for node-js developer",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aashishpanchal/ufiber.git"
+  },
+  "homepage": "https://github.com/aashishpanchal/ufiber#readme",
   "keywords": [
     "node",
     "http",
     "web",
     "server",
     "uws",
-    "fiver"
+    "Fiber"
   ],
   "engines": {
     "node": ">=20"

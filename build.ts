@@ -3,6 +3,8 @@ import {glob} from 'glob';
 import {rimraf} from 'rimraf';
 import {build, type Options} from 'tsdown';
 
+const isWatch = process.argv.includes('--watch');
+
 const tsdownConfig: Options = {
   dts: true,
   clean: false,
@@ -13,6 +15,7 @@ const tsdownConfig: Options = {
   unbundle: true,
   treeshake: true,
   unused: true,
+  watch: isWatch,
 };
 
 const entries: Options[] = [
@@ -30,16 +33,6 @@ async function buildProject() {
   }
   // Remove all .d.mts files
   await rimraf(['./dist/**/*.d.mts', './dist/**/*.d.cts'], {glob: true});
-
-  console.log('✅ Build completed successfully!\n📁 Generated files:');
-
-  // List all files in dist/
-  const _glob = await glob('**/*', {
-    cwd: './dist',
-  });
-  for (const file of _glob) {
-    console.log('  -', file);
-  }
 }
 
 buildProject()

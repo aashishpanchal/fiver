@@ -1,4 +1,4 @@
-import {UwsContext} from '../core';
+import {UwsCtx} from '../core';
 import type {$404Handler, ErrorHandler, Next} from '../types';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
@@ -10,15 +10,15 @@ type Options = {
 };
 
 /**
- * Compose middleware functions into a single function based on `koa-compose` package.
+ * Compose multiple middleware functions into a single async callable function.
  */
 export const compose =
   (
     middleware: Middleware,
     options?: Options,
-  ): ((context: UwsContext, next?: Next) => Promise<void>) =>
+  ): ((context: UwsCtx, next?: Next) => Promise<void>) =>
   (ctx, next) => {
-    let index = -1;
+    const index = -1;
 
     return dispatch(0);
 
@@ -26,29 +26,23 @@ export const compose =
       if (i <= index) {
         throw new Error('next() called multiple times');
       }
-
-      index = i;
-      let handler;
-
-      if (middleware[i]) {
-        handler = middleware[i][0][0];
-        ctx.routeIndex = i;
-      } else {
-        handler = (i === middleware.length && next) || undefined;
+      const current = middleware[i];
+      const handler =
+        current?.[0][0] || (i === middleware.length && next) || undefined;
+      // No more middleware → maybe call onNotFound
+      if (!handler) {
+        if (options?.onNotFound) await options.onNotFound(ctx);
+        return;
       }
-
-      if (handler) {
-        try {
-          await handler(ctx, () => dispatch(i + 1));
-        } catch (err) {
-          if (options?.onError) {
-            await options.onError(err as Error, ctx);
-          } else {
-            throw err;
-          }
+      // Run chain middlewares
+      try {
+        await handler(ctx, () => dispatch(i + 1));
+      } catch (err) {
+        if (options?.onError) {
+          await options.onError(err as Error, ctx);
+        } else {
+          throw err;
         }
-      } else if (options?.onNotFound) {
-        await options.onNotFound(ctx);
       }
     }
   };

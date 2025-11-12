@@ -1,6 +1,6 @@
-import {Writable} from 'node:stream';
 import {TextEncoder} from 'util';
-import {cInternal, type UwsContext} from '../core/context';
+import {Writable} from 'node:stream';
+import {kResData, type UwsCtx} from './uws-ctx';
 
 /**
  * UwsStream — Node-native Writable for uWebSockets.js
@@ -11,8 +11,8 @@ import {cInternal, type UwsContext} from '../core/context';
  * - Supports both .write()/.writeln() and pipe(Readable)
  * - Minimal memory use + no WebStreams dependency
  */
-export class UwsStream extends Writable {
-  #ctx: UwsContext;
+export class UwsWritable extends Writable {
+  #ctx: UwsCtx;
   #encoder = new TextEncoder();
   #headersSent = false;
   #pending: Buffer[] = [];
@@ -21,7 +21,7 @@ export class UwsStream extends Writable {
   #flushTimer?: NodeJS.Timeout;
   #maxPendingSize = 64 * 1024; // 64KB buffer limit
 
-  constructor(ctx: UwsContext) {
+  constructor(ctx: UwsCtx) {
     super({
       highWaterMark: 16 * 1024, // 16KB chunks
       objectMode: false,
@@ -47,7 +47,7 @@ export class UwsStream extends Writable {
    */
   #ensureHeaders(): void {
     if (this.#headersSent) return;
-    const internal = this.#ctx[cInternal];
+    const internal = this.#ctx[kResData];
     const res = this.#ctx.res;
     const statusCode = internal.status || 200;
 

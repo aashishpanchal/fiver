@@ -4,24 +4,29 @@ import {TrieRouter} from './trie-tree';
 import {RegExpRouter} from './reg-exp';
 import {METHOD_NAME_ALL, METHOD_NAME_ALL_LOWERCASE, METHODS} from '../consts';
 import type {
-  Target,
   Handler,
   RouterRoute,
   $404Handler,
   ErrorHandler,
   Router as IRouter,
+  Middleware,
 } from '../types';
 import {compose} from './layer';
 
-export const onNotFound: $404Handler = ctx =>
+// Default Handlers
+const onNotFound: $404Handler = ctx =>
   ctx.status(404).json({
-    message: `Cannot ${ctx.req.url} on ${ctx.req.method}`,
+    message: `Cannot ${ctx.url} on ${ctx.method}`,
   });
 
-export const onError: ErrorHandler = (err, ctx) => {
+const onError: ErrorHandler = (err, ctx) => {
   console.error(err);
   ctx.text('Internal Server Error', 500);
 };
+
+// Symbol-based private keys (exported for controlled access)
+export const kNotFound = Symbol('notFound');
+export const kErrorHandler = Symbol('errorHandler');
 
 /**
  * Lightweight, router built on top of a RegExp/Trie based matcher.
@@ -34,10 +39,9 @@ export class Router {
   #path = '/';
   router: IRouter<[Handler, RouterRoute]>;
 
-  // eslint-disable-next-line no-unused-private-class-members
-  #notFound: $404Handler = onNotFound;
-  // Cannot use `#` because it requires visibility at JavaScript runtime.
-  #errorHandler: ErrorHandler = onError;
+  // Symbol-based private handlers
+  [kNotFound]: $404Handler = onNotFound;
+  [kErrorHandler]: ErrorHandler = onError;
 
   /** Register a GET route. */
   get!: (path: string, ...handlers: Handler[]) => this;
@@ -56,29 +60,7 @@ export class Router {
   /** Register a route matching any HTTP method. */
   all!: (path: string, ...handlers: Handler[]) => this;
 
-  /**
-   * Creates a new Router instance.
-   *
-   * @param router - Determines internal matcher:
-   *   'trie'    → uses TrieRouter
-   *   'regexp'  → uses RegExpRouter
-   *   'both'    → uses SmartRouter (RegExp + Trie)
-   *   IRouter   → use provided router directly
-   *
-   * @example
-   * ```ts
-   * // Multi-router (default)
-   * import express from 'express';
-   * import {Router} from 'exstack';
-   *
-   * const app = express();
-   * const api = new Router(); // uses both Trie + RegExp internally
-   *
-   * api.get('/ping', (req, res) => res.send('pong'));
-   * api.post('/login', (req, res) => res.send({ token: 'abc123' }));
-   * ```
-   */
-  constructor(router: Target = 'both') {
+  constructor() {
     // Dynamically assign route registration methods
     const allMethods = [...METHODS, METHOD_NAME_ALL_LOWERCASE];
     allMethods.forEach(method => {
@@ -89,24 +71,10 @@ export class Router {
         return this as any;
       };
     });
-    // --- dynamic router assignment ---
-    switch (router) {
-      case 'trie':
-        this.router = new TrieRouter();
-        break;
-      case 'regexp':
-        this.router = new RegExpRouter();
-        break;
-      case 'both':
-        this.router = new SmartRouter({
-          routers: [new RegExpRouter(), new TrieRouter()],
-        });
-        break;
-      default:
-        throw new Error(
-          `Router constructor expects 'trie', 'regexp', 'both'. Received: ${router}`,
-        );
-    }
+    // Router assignment
+    this.router = new SmartRouter({
+      routers: [new RegExpRouter(), new TrieRouter()],
+    });
   }
 
   /**
@@ -142,9 +110,6 @@ export class Router {
    * Registers middleware handlers.
    * Works similarly to `app.use()` in Express.
    *
-   * - If called with a path: attaches handlers only for that path.
-   * - If called without a path: applies globally to all requests.
-   *
    * @param arg1 - Path string or the first handler function.
    * @param handlers - Additional handler functions.
    * @returns This router instance.
@@ -155,7 +120,7 @@ export class Router {
    * router.use('/api', apiMiddleware);
    * ```
    */
-  use = (arg1: string | Handler, ...handlers: Handler[]): Router => {
+  use = (arg1: string | Middleware, ...handlers: Middleware[]): Router => {
     if (typeof arg1 === 'string') {
       this.#path = arg1;
     } else {
@@ -183,7 +148,7 @@ export class Router {
    * ```
    */
   onError = (handler: ErrorHandler): Router => {
-    this.#errorHandler = handler;
+    this[kErrorHandler] = handler;
     return this;
   };
 
@@ -201,12 +166,12 @@ export class Router {
    * ```
    */
   notFound = (handler: $404Handler): Router => {
-    this.#notFound = handler;
+    this[kNotFound] = handler;
     return this;
   };
 
   /**
-   * `.route()` allows grouping other Fiver instance in routes.
+   * `.route()` allows grouping other Fiber instance in routes.
    *
    * @param {string} path - base Path
    * @param {Router} router - other Router instance
@@ -221,35 +186,23 @@ export class Router {
    * app.route("/api", app2) // GET /api/user
    * ```
    */
-  route(path: string, router: Router): Router {
+  route(path: string, router: Router): void {
     if (router === this) throw new Error('Cannot mount router onto itself');
     const base = mergePath(this.#basePath, path);
-    // If same router type or SmartRouter root → merge routes
-    if (
-      this.router.name === router.router.name || // same type (e.g., both RegExpRouter)
-      this.router.name === 'SmartRouter' // SmartRouter root → universal
-    ) {
-      // merge routes (Shadow Copy)
-      router.routes.forEach(r => {
-        let handler: Handler;
-        if (router.#errorHandler === onError) {
-          handler = r.handler;
-        } else {
-          handler = async (c, next) =>
-            await compose([], {onError: router.#errorHandler})(
-              c,
-              () => r.handler(c, next) as any,
-            );
-        }
-        this.#addRoute(r.method, mergePath(base, r.path), handler);
-      });
-    } else {
-      // Fallback → Throw Error
-      throw new Error(
-        `Cannot mount sub-router with different type (${router.router.name}) on root router (${this.router.name})!`,
-      );
-    }
-    return this;
+    // merge routes (Shadow Copy)
+    router.routes.forEach(r => {
+      let handler: Handler;
+      if (router[kErrorHandler] === onError) {
+        handler = r.handler;
+      } else {
+        handler = async (c, next) =>
+          await compose([], {onError: router[kErrorHandler]})(
+            c,
+            () => r.handler(c, next) as any,
+          );
+      }
+      this.#addRoute(r.method, mergePath(base, r.path), handler);
+    });
   }
 
   /**

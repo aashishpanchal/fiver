@@ -1,8 +1,8 @@
 import uws from '../uws';
-import type {Target} from './types';
+import path from 'node:path';
 import {compose} from './router/layer';
-import {cInternal, UwsContext} from './core';
-import {onError, onNotFound, Router} from './router';
+import {kMatch, UwsCtx} from './core';
+import {kErrorHandler, kNotFound, Router} from './router';
 import type {
   AppOptions,
   HttpRequest,
@@ -10,9 +10,10 @@ import type {
   TemplatedApp,
   WebSocketBehavior,
 } from '../uws';
+import {MAX_BYTES} from './consts';
+import {isPromise} from './utils/tools';
 
-export type FiverOptions = {
-  target?: Target;
+export type FiberOptions = {
   http3?: boolean;
   methods?: string[];
   uwsOptions?: AppOptions;
@@ -20,20 +21,23 @@ export type FiverOptions = {
 };
 
 /**
- * The Fiver class extends the functionality of the Router class.
+ * The Fiber class extends the functionality of the Router class.
  * It sets up routing and allows for custom options to be passed.
  */
-export class Fiver extends Router {
-  uwsApp: TemplatedApp;
-  #methods?: string[];
-  #protocol: 'http' | 'https' | 'http3' = 'http';
+export class Fiber extends Router {
+  readonly uws: TemplatedApp;
+  readonly #appName: string;
+  readonly #methods?: string[];
+  readonly #protocol: 'http' | 'https' | 'http3' = 'http';
+
   /**
-   * Creates an instance of the Fiver class.
+   * Creates an instance of the Fiber class.
    *
-   * @param options - Optional configuration options for the Fiver instance.
+   * @param options - Optional configuration options for the Fiber instance.
    */
-  constructor(options: FiverOptions = {}) {
-    super(options?.target);
+  constructor(options: FiberOptions = {}) {
+    super();
+    this.#appName = options.appName || 'Fiber-js';
     this.#methods = options.methods ?? ['POST', 'PUT', 'PATCH'];
     const opts = options.uwsOptions ?? {};
     // Create the uWS App
@@ -43,13 +47,13 @@ export class Fiver extends Router {
           'HTTP/3 requires uwsOptions.key_file_name and uwsOptions.cert_file_name',
         );
       }
-      this.uwsApp = (uws as any).H3App(opts);
+      this.uws = (uws as any).H3App(opts);
       this.#protocol = 'http3';
     } else if (opts.key_file_name && opts.cert_file_name) {
-      this.uwsApp = uws.SSLApp(opts);
+      this.uws = uws.SSLApp(opts);
       this.#protocol = 'https';
     } else {
-      this.uwsApp = uws.App(opts);
+      this.uws = uws.App(opts);
       this.#protocol = 'http';
     }
   }
@@ -74,56 +78,48 @@ export class Fiver extends Router {
    * ```
    */
   ws(pattern: string, behavior: WebSocketBehavior<any>): this {
-    this.uwsApp.ws(pattern, behavior);
+    this.uws.ws(pattern, behavior);
     return this;
   }
 
-  #dispatch = (res: HttpResponse, req: HttpRequest): void => {
-    const url = req.getUrl();
-    const method = req.getMethod().toUpperCase();
-    const effectiveMethod = method === 'HEAD' ? 'GET' : method;
-    const matchResult = this.router.match(effectiveMethod, url);
-    // UwsContext Instance
-    const ctx = new UwsContext({
+  #dispatch = (res: HttpResponse, req: HttpRequest) => {
+    // Create context with request instance
+    const ctx = new UwsCtx({
       req,
       res,
-      matchResult: matchResult,
+      maxBytes: MAX_BYTES,
       methods: this.#methods,
+      appName: this.#appName,
     });
-    const handleHeadRequest = () => {
-      if (method === 'HEAD' && !ctx.aborted && !ctx[cInternal].ended) {
-        ctx.res.end();
-        ctx[cInternal].ended = true;
+    // Use request.method instead of duplicating getMethod()
+    const matchResult = this.router.match(
+      ctx.method === 'HEAD' ? 'GET' : ctx.method,
+      ctx.url,
+    );
+    // Set matchResult on request
+    ctx[kMatch] = matchResult;
+    // If match-result not found
+    if (!matchResult) return this[kNotFound](ctx);
+    // Skip compose if only one handler
+    if (matchResult[0].length === 1) {
+      try {
+        const result = matchResult[0][0][0][0](
+          ctx,
+          async () => await this[kNotFound](ctx),
+        );
+        if (isPromise(result))
+          result.catch(err => this[kErrorHandler](err, ctx));
+      } catch (err) {
+        this[kErrorHandler](err as Error, ctx);
       }
-    };
-    try {
-      // If no match
-      if (!matchResult) {
-        onNotFound(ctx);
-        return;
-      }
-      // Do not `compose` if it has only one handler
-      const handlers = matchResult[0];
-      if (handlers.length === 1) {
-        try {
-          const fn = handlers[0][0][0];
-          const result = fn(ctx, async () => {
-            await onNotFound(ctx);
-          });
-          if (result instanceof Promise) {
-            result.catch(async (err: Error) => await onError(err, ctx));
-          }
-        } catch (err) {
-          onError(err as Error, ctx);
-        }
-        handleHeadRequest();
-        return;
-      }
-      compose(matchResult[0], {onError, onNotFound})(ctx);
-      handleHeadRequest();
-    } catch (err) {
-      onError(err as Error, ctx);
     }
+    // Compose middleware chain
+    const composed = compose(matchResult[0], {
+      onError: this[kErrorHandler],
+      onNotFound: this[kNotFound],
+    });
+    const result = composed(ctx);
+    if (isPromise(result)) result.catch(err => this[kErrorHandler](err, ctx));
   };
 
   listen(
@@ -135,9 +131,8 @@ export class Fiver extends Router {
   listen(path: string, callback?: (url: string) => void | Promise<void>): void;
   listen(callback?: (url: string) => void): void;
   listen(...args: any[]): void {
-    if (args.length > 3) throw new Error('Only accept three arguments');
     // Register router
-    this.uwsApp.any('/*', this.#dispatch);
+    this.uws.any('/*', this.#dispatch);
     // Listen server
     let port: number | string = 0;
     let host: string | undefined;
@@ -157,25 +152,25 @@ export class Fiver extends Router {
           `Failed to listen on ${port}. No permission or address in use.`,
         );
       }
-      const protocol =
-        this.#protocol === 'http3'
-          ? 'http3'
-          : this.#protocol === 'https'
-            ? 'https'
-            : 'http';
-      const address =
-        typeof port === 'number'
-          ? `${protocol}://${host ?? '0.0.0.0'}:${port}`
-          : port;
+      let address: string;
+      if (typeof port === 'string' && isNaN(Number(port))) {
+        // It’s a Unix domain socket
+        const normalizedPath =
+          port.startsWith('/') || port.startsWith('./') ? port : `./${port}`;
+        // Use absolute path for clarity
+        address = path.resolve(normalizedPath);
+      } else {
+        address = `${this.#protocol}://${host ?? '0.0.0.0'}:${port}`;
+      }
       cb?.(address);
     };
     if (typeof port === 'string' && isNaN(Number(port))) {
       // Unix socket
-      this.uwsApp.listen_unix(onListen, port);
+      this.uws.listen_unix(onListen, port);
     } else {
       const numericPort = Number(port);
-      if (host) (this.uwsApp as any).listen(host, numericPort, onListen);
-      else (this.uwsApp as any).listen(numericPort, onListen);
+      if (host) this.uws.listen(host, numericPort, onListen);
+      else this.uws.listen(numericPort, onListen);
     }
   }
 }

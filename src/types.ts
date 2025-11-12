@@ -1,5 +1,5 @@
+import type {UwsCtx} from './core';
 import type {HttpError} from './errors';
-import type {UwsContext} from './core';
 
 ////////////////////////////////////////
 //////                            //////
@@ -8,18 +8,13 @@ import type {UwsContext} from './core';
 ////////////////////////////////////////
 
 export type Next = () => Promise<void>;
-
-export type Handler = (ctx: UwsContext, next: Next) => void | Promise<void>;
-
-export type Middleware = (ctx: UwsContext, next: Next) => Promise<void>;
-
-export type $404Handler = (ctx: UwsContext) => void | Promise<void>;
-
+export type Middleware = (ctx: UwsCtx, next: Next) => Promise<void>;
+export type Handler = (ctx: UwsCtx, next: Next) => void | Promise<void>;
+export type $404Handler = (ctx: UwsCtx) => void | Promise<void>;
 export type ErrorHandler = (
   err: Error | HttpError,
-  ctx: UwsContext,
+  ctx: UwsCtx,
 ) => void | Promise<void>;
-
 export type BufferArray = Buffer<ArrayBuffer>;
 
 ////////////////////////////////////////
@@ -27,8 +22,6 @@ export type BufferArray = Buffer<ArrayBuffer>;
 //////           Router           //////
 //////                            //////
 ////////////////////////////////////////
-
-export type Target = 'trie' | 'regexp' | 'both';
 
 /**
  * Represents a single route definition.
