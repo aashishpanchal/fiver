@@ -179,5 +179,3 @@ export class Fiver extends Router {
     }
   }
 }
-
-console.log(import.meta);
