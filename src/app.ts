@@ -37,7 +37,7 @@ export class Fiber extends Router {
    */
   constructor(options: FiberOptions = {}) {
     super();
-    this.#appName = options.appName || 'Fiber-js';
+    this.#appName = options.appName || 'Fiber';
     this.#methods = options.methods ?? ['POST', 'PUT', 'PATCH'];
     const opts = options.uwsOptions ?? {};
     // Create the uWS App

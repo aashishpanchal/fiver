@@ -333,7 +333,7 @@ export class UwsCtx {
    *
    * @example
    * ```ts
-   * const buffer = await req.body();
+   * const buffer = await ctx.bodyRaw();
    * console.log(buffer.length, 'bytes received');
    * ```
    */
@@ -351,7 +351,7 @@ export class UwsCtx {
    *
    * @example
    * ```ts
-   * const text = await req.text();
+   * const text = await ctx.textParse();
    * console.log('Body:', text);
    * ```
    */
@@ -369,7 +369,7 @@ export class UwsCtx {
    *
    * @example
    * ```ts
-   * const arrayBuffer = await req.arrayBuffer();
+   * const arrayBuffer = await ctx.arrayBuffer();
    * console.log(arrayBuffer.byteLength);
    * ```
    * @returns {Promise<ArrayBuffer>}
@@ -392,13 +392,13 @@ export class UwsCtx {
    *
    * @example
    * ```ts
-   * const blob = await req.blob();
+   * const blob = await ctx.blobParse();
    * console.log('Blob size:', blob.size);
    * ```
    *
    * @returns {Promise<Blob>}
    */
-  async parseBlob(): Promise<Blob> {
+  async blobParse(): Promise<Blob> {
     safeReadBody('Blob', this.method, this.isRead, this.aborted);
     if (this[kReqData].body.blob) return this[kReqData].body.blob;
     const type = this.reqHeader('Content-Type') || 'application/octet-stream';
@@ -413,7 +413,7 @@ export class UwsCtx {
    *
    * @example
    * ```ts
-   * const data = await req.json();
+   * const data = await ctx.jsonParse();
    * console.log(data.user, data.email);
    * ```
    *
@@ -421,7 +421,7 @@ export class UwsCtx {
    * @returns {Promise<T>} The parsed JSON body.
    * @throws {SyntaxError} If body is empty or malformed.
    */
-  async parseJson<T = any>(): Promise<T> {
+  async jsonParse<T = any>(): Promise<T> {
     safeReadBody('JSON', this.method, this.isRead, this.aborted);
     if (this[kReqData].body.json) return this[kReqData].body.json;
     const text = await this.textParse();
@@ -440,14 +440,14 @@ export class UwsCtx {
    *
    * @example
    * ```ts
-   * const form = await req.formData();
+   * const form = await ctx.formParse();
    * console.log(form.get('username')); // => "alice"
    * ```
    * @param {FormOption} [options] - Optional multipart parser settings.
    * @returns {Promise<FormData>}
    * @throws {TypeError} If content type is unsupported.
    */
-  async parseForm(options?: FormOption): Promise<FormData> {
+  async formParse(options?: FormOption): Promise<FormData> {
     safeReadBody('FormData', this.method, this.isRead, this.aborted);
     if (this[kReqData].body.formData) return this[kReqData].body.formData;
     const cType = this.reqHeader('Content-Type')?.toLowerCase() ?? '';

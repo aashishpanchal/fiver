@@ -1,5 +1,5 @@
-import fs from 'node:fs';
-import {glob} from 'glob';
+// import fs from 'node:fs';
+// import {glob} from 'glob';
 import {rimraf} from 'rimraf';
 import {build, type Options} from 'tsdown';
 
@@ -25,7 +25,6 @@ const entries: Options[] = [
 async function buildProject() {
   // Clean previous dist folders
   await rimraf('./dist', {glob: false});
-
   console.log('🚀 Building exstack...');
   for (const entry of entries) {
     // Build main entry point
@@ -35,24 +34,24 @@ async function buildProject() {
   await rimraf(['./dist/**/*.d.mts', './dist/**/*.d.cts'], {glob: true});
 }
 
-buildProject()
-  .then(async () => {
-    // 🧩 Fix ESM import paths to include `.mjs`
-    const _glob = await glob('./dist/**/*.mjs', {cwd: '.'});
+buildProject();
+// .then(async () => {
+//   // 🧩 Fix ESM import paths to include `.js`
+//   const _glob = await glob('./dist/**/*.js', {cwd: '.'});
 
-    for (const entry of _glob) {
-      const content = await fs.promises.readFile(entry, 'utf-8');
-      const fixed = content
-        // Only match imports/exports from relative paths
-        .replace(
-          /(import|export)\s*\{([^}]*)\}\s*from\s*['"]((?:\.{1,2}\/)[^'"]+?)(?<!\.mjs)['"]/g,
-          '$1{$2}from"$3.mjs"',
-        )
-        .replace(
-          /(import|export)\s+([\w_$]+)\s+from\s*['"]((?:\.{1,2}\/)[^'"]+?)(?<!\.mjs)['"]/g,
-          '$1 $2 from"$3.mjs"',
-        );
-      await fs.promises.writeFile(entry, fixed);
-    }
-  })
-  .catch(console.error);
+//   for (const entry of _glob) {
+//     const content = await fs.promises.readFile(entry, 'utf-8');
+//     const fixed = content
+//       // Only match imports/exports from relative paths
+//       .replace(
+//         /(import|export)\s*\{([^}]*)\}\s*from\s*['"]((?:\.{1,2}\/)[^'"]+?)(?<!\.js)['"]/g,
+//         '$1{$2}from"$3.js"',
+//       )
+//       .replace(
+//         /(import|export)\s+([\w_$]+)\s+from\s*['"]((?:\.{1,2}\/)[^'"]+?)(?<!\.js)['"]/g,
+//         '$1 $2 from"$3.js"',
+//       );
+//     await fs.promises.writeFile(entry, fixed);
+//   }
+// })
+// .catch(console.error);
