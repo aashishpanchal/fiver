@@ -19,7 +19,10 @@ const tsdownConfig: Options = {
 };
 
 const entries: Options[] = [
-  {entry: './src/index.ts', external: [/.*\/uws$/, /^\.\.\/uws/, 'uws']},
+  {
+    entry: ['./src/index.ts', './src/middle/error-handler.ts', './src/consts.ts'],
+    external: [/.*\/uws$/, /^\.\.\/uws/, 'uws'],
+  },
 ];
 
 async function buildProject() {

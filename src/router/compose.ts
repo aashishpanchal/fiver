@@ -1,5 +1,6 @@
-import {UwsCtx} from '../core';
-import type {$404Handler, ErrorHandler, Next} from '../types';
+import {kCtxReq} from '@/consts';
+import {Context} from '@/http';
+import type {$404Handler, ErrorHandler, Next} from '@/types';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 export type Middleware = [[Function, unknown], unknown][] | [[Function]][];
@@ -16,7 +17,7 @@ export const compose =
   (
     middleware: Middleware,
     options?: Options,
-  ): ((context: UwsCtx, next?: Next) => Promise<void>) =>
+  ): ((context: Context, next?: Next) => Promise<void>) =>
   (ctx, next) => {
     const index = -1;
 
@@ -26,9 +27,15 @@ export const compose =
       if (i <= index) {
         throw new Error('next() called multiple times');
       }
-      const current = middleware[i];
-      const handler =
-        current?.[0][0] || (i === middleware.length && next) || undefined;
+
+      let handler;
+      if (middleware[i]) {
+        handler = middleware[i][0][0];
+        ctx[kCtxReq].routeIndex = i;
+      } else {
+        handler = (i === middleware.length && next) || undefined;
+      }
+
       // No more middleware → maybe call onNotFound
       if (!handler) {
         if (options?.onNotFound) await options.onNotFound(ctx);

@@ -1,6 +1,9 @@
-type Decoder = (str: string) => string;
+import {HttpRequest} from '../../uws';
 
-export const tryDecode = (str: string, decoder: Decoder): string => {
+export const tryDecode = (
+  str: string,
+  decoder: (str: string) => string,
+): string => {
   try {
     return decoder(str);
   } catch {
@@ -49,7 +52,6 @@ export const checkOptionalParameter = (path: string): string[] | null => {
       }
     }
   }
-
   // Remove duplicates (just in case)
   return [...new Set(results)];
 };
@@ -77,4 +79,17 @@ export const mergePath: (...paths: string[]) => string = (
       ? ''
       : `${base?.at(-1) === '/' ? '' : '/'}${sub?.[0] === '/' ? sub.slice(1) : sub}`
   }`;
+};
+
+export const parseReqUrl = (req: HttpRequest, isSSL = false) => {
+  const q = req.getQuery(); // "age=56"
+  const rawPath = req.getUrl(); // "/67"
+  const query = q ? '?' + q : '';
+  const host = req.getHeader('host');
+  const protocol = isSSL ? 'https://' : 'http://';
+  return {
+    url: protocol + host + rawPath + query, // "http://localhost:3000/67?age=56"
+    path: rawPath, // "/67"
+    query: query, // "?age=56"
+  };
 };

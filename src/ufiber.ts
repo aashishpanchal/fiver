@@ -1,7 +1,8 @@
 import uws from '../uws';
 import path from 'node:path';
-import {compose} from './router/layer';
-import {kMatch, UwsCtx} from './core';
+import {Context} from './http';
+import {kMatch} from './consts';
+import {compose} from './router/compose';
 import {kErrorHandler, kNotFound, Router} from './router';
 import type {
   AppOptions,
@@ -10,14 +11,17 @@ import type {
   TemplatedApp,
   WebSocketBehavior,
 } from '../uws';
-import {MAX_BYTES} from './consts';
-import {isPromise} from './utils/tools';
+import {type ByteString, isPromise, parseBytes} from './utils/tools';
 
 export type FiberOptions = {
-  http3?: boolean;
+  /** App name (optional). */
+  name?: string;
+  /** Allowed HTTP methods. */
   methods?: string[];
+  /** Max request body size in bytes-string., (Default: 16MB) */
+  bodyLimit?: ByteString;
+  /** uWebSockets.js App options. */
   uwsOptions?: AppOptions;
-  appName?: string;
 };
 
 /**
@@ -26,35 +30,28 @@ export type FiberOptions = {
  */
 export class Fiber extends Router {
   readonly uws: TemplatedApp;
-  readonly #appName: string;
+  readonly #name: string;
+  readonly isSSL: boolean;
   readonly #methods?: string[];
-  readonly #protocol: 'http' | 'https' | 'http3' = 'http';
+  readonly bodyLimit?: number;
 
   /**
    * Creates an instance of the Fiber class.
    *
    * @param options - Optional configuration options for the Fiber instance.
    */
-  constructor(options: FiberOptions = {}) {
+  constructor(options: FiberOptions = Object.create(null)) {
     super();
-    this.#appName = options.appName || 'Fiber';
-    this.#methods = options.methods ?? ['POST', 'PUT', 'PATCH'];
+    this.#name = options.name || 'uFiber';
+    this.#methods = options.methods;
+    this.bodyLimit = parseBytes(options.bodyLimit || '16MB'); // Default 16MB
     const opts = options.uwsOptions ?? {};
-    // Create the uWS App
-    if (options.http3) {
-      if (!opts.key_file_name || !opts.cert_file_name) {
-        throw new Error(
-          'HTTP/3 requires uwsOptions.key_file_name and uwsOptions.cert_file_name',
-        );
-      }
-      this.uws = (uws as any).H3App(opts);
-      this.#protocol = 'http3';
-    } else if (opts.key_file_name && opts.cert_file_name) {
+    if (opts.key_file_name && opts.cert_file_name) {
       this.uws = uws.SSLApp(opts);
-      this.#protocol = 'https';
+      this.isSSL = true;
     } else {
       this.uws = uws.App(opts);
-      this.#protocol = 'http';
+      this.isSSL = false;
     }
   }
 
@@ -84,17 +81,18 @@ export class Fiber extends Router {
 
   #dispatch = (res: HttpResponse, req: HttpRequest) => {
     // Create context with request instance
-    const ctx = new UwsCtx({
+    const ctx = new Context({
       req,
       res,
-      maxBytes: MAX_BYTES,
+      isSSL: this.isSSL,
+      appName: this.#name,
+      bodyLimit: this.bodyLimit,
       methods: this.#methods,
-      appName: this.#appName,
     });
     // Use request.method instead of duplicating getMethod()
     const matchResult = this.router.match(
       ctx.method === 'HEAD' ? 'GET' : ctx.method,
-      ctx.url,
+      ctx.path,
     );
     // Set matchResult on request
     ctx[kMatch] = matchResult;
@@ -112,6 +110,7 @@ export class Fiber extends Router {
       } catch (err) {
         this[kErrorHandler](err as Error, ctx);
       }
+      return;
     }
     // Compose middleware chain
     const composed = compose(matchResult[0], {
@@ -160,7 +159,8 @@ export class Fiber extends Router {
         // Use absolute path for clarity
         address = path.resolve(normalizedPath);
       } else {
-        address = `${this.#protocol}://${host ?? '0.0.0.0'}:${port}`;
+        const protocol = this.isSSL ? 'https' : 'http';
+        address = `${protocol}://${host ?? '0.0.0.0'}:${port}`;
       }
       cb?.(address);
     };
@@ -172,5 +172,13 @@ export class Fiber extends Router {
       if (host) this.uws.listen(host, numericPort, onListen);
       else this.uws.listen(numericPort, onListen);
     }
+    // SHUTDOWN
+    const shutdown = () => {
+      this.uws.close();
+      process.exit(0);
+    };
+    // Handle Ctrl+C
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
   }
 }

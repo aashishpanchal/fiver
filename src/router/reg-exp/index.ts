@@ -1,8 +1,8 @@
 import {UnsupportedPathError} from '../error';
-import {checkOptionalParameter} from '../../utils/url';
+import {checkOptionalParameter} from '@/utils/url';
+import type {Result, Router, ParamIndexMap} from '@/types';
 import {Trie, PATH_ERROR, type ParamAssocArray} from './node';
-import type {Result, Router, ParamIndexMap} from '../../types';
-import {MESSAGE_MATCHER_IS_ALREADY_BUILT, METHOD_NAME_ALL} from '../../consts';
+import {MESSAGE_MATCHER_IS_ALREADY_BUILT, METHOD_NAME_ALL} from '@/consts';
 
 export type HandlerData<T> = [T, ParamIndexMap][];
 

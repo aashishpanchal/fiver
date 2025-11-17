@@ -1,5 +1,9 @@
-import type {UwsCtx} from './core';
+import type {Context} from './http';
 import type {HttpError} from './errors';
+import type {HttpRequest, HttpResponse} from 'uws';
+
+export type UwsHttpRequest = HttpRequest;
+export type UwsHttpResponse = HttpResponse;
 
 ////////////////////////////////////////
 //////                            //////
@@ -8,12 +12,12 @@ import type {HttpError} from './errors';
 ////////////////////////////////////////
 
 export type Next = () => Promise<void>;
-export type Middleware = (ctx: UwsCtx, next: Next) => Promise<void>;
-export type Handler = (ctx: UwsCtx, next: Next) => void | Promise<void>;
-export type $404Handler = (ctx: UwsCtx) => void | Promise<void>;
+export type Middleware = (ctx: Context, next: Next) => Promise<void>;
+export type Handler = (ctx: Context, next: Next) => void | Promise<void>;
+export type $404Handler = (ctx: Context) => void | Promise<void>;
 export type ErrorHandler = (
   err: Error | HttpError,
-  ctx: UwsCtx,
+  ctx: Context,
 ) => void | Promise<void>;
 export type BufferArray = Buffer<ArrayBuffer>;
 

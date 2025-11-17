@@ -14,7 +14,7 @@ import zlib from 'node:zlib';
 import https from 'node:https';
 import {pipeline} from 'node:stream/promises';
 
-const VERSION = 'v20.56.0';
+const VERSION = 'v20.51.0';
 const GIT_REPO = 'uNetworking/uWebSockets.js';
 const DOWNLOAD_URL = `https://codeload.github.com/${GIT_REPO}/tar.gz/refs/tags/${VERSION}`;
 const TARGET_FILE = `uws_${process.platform}_${process.arch}_${process.versions.modules}.node`;

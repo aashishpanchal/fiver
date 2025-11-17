@@ -1,6 +1,6 @@
-import type {Result, Router} from '../types';
+import type {Result, Router} from '@/types';
 import {UnsupportedPathError} from './error';
-import {MESSAGE_MATCHER_IS_ALREADY_BUILT} from '../consts';
+import {MESSAGE_MATCHER_IS_ALREADY_BUILT} from '@/consts';
 
 export class SmartRouter<T> implements Router<T> {
   name: string = 'SmartRouter';

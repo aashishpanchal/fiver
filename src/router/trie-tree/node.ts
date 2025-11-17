@@ -1,6 +1,6 @@
+import type {Params} from '@/types';
 import type {Pattern} from './utils';
-import type {Params} from '../../types';
-import {METHOD_NAME_ALL} from '../../consts';
+import {METHOD_NAME_ALL} from '@/consts';
 import {getPattern, splitPath, splitRoutingPath} from './utils';
 
 type HandlerSet<T> = {

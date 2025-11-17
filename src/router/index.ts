@@ -1,8 +1,8 @@
 import {SmartRouter} from './smart';
-import {mergePath} from '../utils/url';
+import {mergePath} from '@/utils/url';
 import {TrieRouter} from './trie-tree';
 import {RegExpRouter} from './reg-exp';
-import {METHOD_NAME_ALL, METHOD_NAME_ALL_LOWERCASE, METHODS} from '../consts';
+import {METHOD_NAME_ALL, METHOD_NAME_ALL_LOWERCASE, METHODS} from '@/consts';
 import type {
   Handler,
   RouterRoute,
@@ -10,8 +10,8 @@ import type {
   ErrorHandler,
   Router as IRouter,
   Middleware,
-} from '../types';
-import {compose} from './layer';
+} from '@/types';
+import {compose} from './compose';
 
 // Default Handlers
 const onNotFound: $404Handler = ctx =>

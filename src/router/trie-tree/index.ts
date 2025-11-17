@@ -1,6 +1,6 @@
 import {Node} from './node';
+import type {Result, Router} from '@/types';
 import {checkOptionalParameter} from './utils';
-import type {Result, Router} from '../../types';
 
 // TrieRouter implements a simple HTTP router using a Trie (prefix tree) structure.
 export class TrieRouter<T> implements Router<T> {

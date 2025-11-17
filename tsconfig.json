@@ -16,7 +16,11 @@
     "preserveWatchOutput": true,
     "skipLibCheck": true,
     "strict": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": ["src/**/*.ts", "tests/**/*.test.ts", "build.ts"]
 }
